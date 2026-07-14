@@ -1,2 +1,2 @@
-# meter-reader
+# metermate
 monthly electricity bill meter calculator
