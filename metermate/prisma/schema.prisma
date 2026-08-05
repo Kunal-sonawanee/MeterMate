@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Property {
+  id      String  @id @default(cuid())
+  name    String
+  address String?
+
+  meters Meter[] @relation("PropertyMeters")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Meter {
+  id          String  @id @default(cuid())
+  name        String
+  meterNumber String?
+
+  propertyId String
+  property   Property @relation("PropertyMeters", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  readings MonthlyReading[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MonthlyReading {
+  id String @id @default(cuid())
+
+  month Int
+  year  Int
+
+  previousReading Decimal
+  currentReading  Decimal
+
+  unitsConsumed Decimal
+  ratePerUnit   Decimal
+  billAmount    Decimal
+
+  meterId String
+  meter   Meter  @relation(fields: [meterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meterId, month, year])
+}
