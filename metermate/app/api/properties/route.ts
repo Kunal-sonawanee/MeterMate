@@ -1,53 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parseBody, route } from "@/lib/http";
+import { propertySchema } from "@/lib/validation";
+import type { PropertySummary } from "@/lib/types";
 
-export async function GET() {
-  try {
-    const properties = await prisma.property.findMany({
-      include: {
-        meters: true,
-      },
-    });
+export const dynamic = "force-dynamic";
 
-    return NextResponse.json(properties);
-  } catch (error) {
-    console.error(error);
+export const GET = route(async () => {
+  const properties = await prisma.property.findMany({
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      createdAt: true,
+      _count: { select: { meters: true } },
+    },
+  });
 
-    return NextResponse.json(
-      {
-        message: "Failed to fetch properties",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}
+  const payload: PropertySummary[] = properties.map((property) => ({
+    id: property.id,
+    name: property.name,
+    address: property.address,
+    meterCount: property._count.meters,
+    createdAt: property.createdAt.toISOString(),
+  }));
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
+  return NextResponse.json(payload);
+});
 
-    const property = await prisma.property.create({
-      data: {
-        name: body.name,
-        address: body.address,
-      },
-    });
+export const POST = route(async (request: Request) => {
+  const data = await parseBody(request, propertySchema);
 
-    return NextResponse.json(property, {
-      status: 201,
-    });
-  } catch (error) {
-    console.error(error);
+  const property = await prisma.property.create({
+    data: {
+      name: data.name,
+      address: data.address ? data.address : null,
+    },
+    select: { id: true, name: true, address: true, createdAt: true },
+  });
 
-    return NextResponse.json(
-      {
-        message: "Failed to create property",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}
+  return NextResponse.json(
+    { ...property, meterCount: 0, createdAt: property.createdAt.toISOString() },
+    { status: 201 },
+  );
+});
