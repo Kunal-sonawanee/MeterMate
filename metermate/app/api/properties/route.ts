@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { parseBody, route } from "@/lib/http";
+import { parseBody, requireUserId, route } from "@/lib/http";
 import { propertySchema } from "@/lib/validation";
 import type { PropertySummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export const GET = route(async () => {
+  const userId = await requireUserId();
+
   const properties = await prisma.property.findMany({
+    where: { userId },
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -30,12 +33,14 @@ export const GET = route(async () => {
 });
 
 export const POST = route(async (request: Request) => {
+  const userId = await requireUserId();
   const data = await parseBody(request, propertySchema);
 
   const property = await prisma.property.create({
     data: {
       name: data.name,
       address: data.address ? data.address : null,
+      userId,
     },
     select: { id: true, name: true, address: true, createdAt: true },
   });

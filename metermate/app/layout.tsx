@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Sans_Devanagari } from "next/font/google";
 import { Toaster } from "sonner";
 import Providers from "@/components/providers";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
@@ -17,6 +17,16 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+// Geist has no Devanagari glyphs, so Hindi and Marathi text would otherwise
+// fall back to whatever sans-serif each OS ships — inconsistent weight and
+// size next to the Latin UI. This fills exactly that gap; Latin text still
+// renders in Geist since it's listed first in the `--font-sans` stack.
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  variable: "--font-noto-devanagari",
+  subsets: ["devanagari"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "MeterMate — electricity meter readings and billing",
@@ -26,6 +36,9 @@ export const metadata: Metadata = {
     "Record monthly electricity meter readings across your properties, and get units and bill amounts worked out for you.",
   applicationName: "MeterMate",
   formatDetection: { telephone: false },
+  authors: [{ name: "Kantex Technologies" }],
+  creator: "Kantex Technologies",
+  publisher: "Kantex Technologies",
 };
 
 export const viewport: Viewport = {
@@ -63,7 +76,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSansDevanagari.variable} antialiased`}
       suppressHydrationWarning
     >
       <head>

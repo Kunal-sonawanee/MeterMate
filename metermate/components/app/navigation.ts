@@ -1,10 +1,4 @@
-import {
-  Building2,
-  Gauge,
-  LayoutDashboard,
-  ListOrdered,
-  Settings,
-} from "lucide-react";
+import { LayoutDashboard, Settings } from "lucide-react";
 
 /** One nav definition, used by the sidebar, the mobile bar and the page titles. */
 export type NavItem = {
@@ -16,30 +10,17 @@ export type NavItem = {
   description: string;
 };
 
+/**
+ * Just Home and Settings — Readings folded into Home (its history sheet), so
+ * there's one destination for the thing this app is actually for, not two
+ * that did almost the same job.
+ */
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
-    label: "Overview",
+    label: "Home",
     icon: LayoutDashboard,
-    description: "This cycle at a glance",
-  },
-  {
-    href: "/readings",
-    label: "Readings",
-    icon: ListOrdered,
-    description: "Every reading you've recorded",
-  },
-  {
-    href: "/meters",
-    label: "Meters",
-    icon: Gauge,
-    description: "Meters and their usage",
-  },
-  {
-    href: "/properties",
-    label: "Properties",
-    icon: Building2,
-    description: "Places you bill for",
+    description: "Record this month's readings",
   },
 ];
 

@@ -35,7 +35,7 @@ export type ReadingWithMeter = Reading & {
 export type MeterSummary = {
   id: string;
   name: string;
-  meterNumber: string | null;
+  whatsappNumber: string | null;
   property: { id: string; name: string };
   readingCount: number;
   latestReading: Reading | null;
@@ -66,6 +66,8 @@ export type TrendPoint = Period & {
   billAmount: number;
 };
 
+export type MainBill = Period & { amount: number };
+
 export type DashboardResponse = {
   /** The most recent period that has any reading at all; null on a fresh account. */
   period: Period | null;
@@ -90,6 +92,8 @@ export type DashboardResponse = {
   /** Up to the last 12 periods, oldest first. */
   trend: TrendPoint[];
   recentReadings: ReadingWithMeter[];
+  mainBill: MainBill | null;
+  ownerRemainder: number | null;
 };
 
 export type ReadingsResponse = {

@@ -87,7 +87,7 @@ function MeterForm({
     resolver: zodResolver(meterSchema),
     defaultValues: {
       name: meter?.name ?? "",
-      meterNumber: meter?.meterNumber ?? "",
+      whatsappNumber: meter?.whatsappNumber ?? "",
       propertyId: meter?.property.id ?? defaultPropertyId ?? "",
     },
   });
@@ -105,7 +105,7 @@ function MeterForm({
         for (const [field, message] of Object.entries(error.fields)) {
           if (
             field === "name" ||
-            field === "meterNumber" ||
+            field === "whatsappNumber" ||
             field === "propertyId"
           ) {
             setError(field, { message });
@@ -191,11 +191,16 @@ function MeterForm({
         </Field>
 
         <Field
-          error={errors.meterNumber?.message}
-          hint="The serial printed on the meter, if you track it."
+          error={errors.whatsappNumber?.message}
+          hint="Used for the WhatsApp bill button — not shared anywhere else."
         >
-          <FieldLabel optional>Meter number</FieldLabel>
-          <Input placeholder="e.g. MSEB-4471902" {...register("meterNumber")} />
+          <FieldLabel optional>Tenant&apos;s WhatsApp number</FieldLabel>
+          <Input
+            type="tel"
+            inputMode="tel"
+            placeholder="e.g. 98765 43210"
+            {...register("whatsappNumber")}
+          />
         </Field>
 
         {errors.root?.message ? (

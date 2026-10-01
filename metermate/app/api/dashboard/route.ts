@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { route } from "@/lib/http";
+import { requireUserId, route } from "@/lib/http";
 import {
   meterRelationSelect,
   newestFirst,
@@ -28,13 +28,17 @@ function previousPeriod({ month, year }: { month: number; year: number }) {
  * and the meters still missing one are named rather than merely counted.
  */
 export const GET = route(async () => {
+  const userId = await requireUserId();
+  const scope = { meter: { property: { userId } } } as const;
+
   const [latest, propertyCount, meterCount] = await Promise.all([
     prisma.monthlyReading.findFirst({
+      where: scope,
       orderBy: newestFirst,
       select: { month: true, year: true },
     }),
-    prisma.property.count(),
-    prisma.meter.count(),
+    prisma.property.count({ where: { userId } }),
+    prisma.meter.count({ where: { property: { userId } } }),
   ]);
 
   if (!latest) {
@@ -46,6 +50,8 @@ export const GET = route(async () => {
       pendingMeters: [],
       trend: [],
       recentReadings: [],
+      mainBill: null,
+      ownerRemainder: null,
     };
 
     return NextResponse.json(empty);
@@ -54,39 +60,42 @@ export const GET = route(async () => {
   const period = { month: latest.month, year: latest.year };
   const prior = previousPeriod(period);
 
-  const [currentTotals, priorTotals, readMeters, trendRows, recentRows] =
+  const [currentTotals, priorTotals, readMeters, trendRows, recentRows, mainBillRow] =
     await Promise.all([
       prisma.monthlyReading.aggregate({
-        where: period,
+        where: { ...scope, ...period },
         _sum: { billAmount: true, unitsConsumed: true },
         _count: { _all: true },
       }),
       prisma.monthlyReading.aggregate({
-        where: prior,
+        where: { ...scope, ...prior },
         _sum: { billAmount: true, unitsConsumed: true },
         _count: { _all: true },
       }),
       prisma.monthlyReading.findMany({
-        where: period,
+        where: { ...scope, ...period },
         select: { meterId: true },
       }),
       prisma.monthlyReading.groupBy({
         by: ["year", "month"],
+        where: scope,
         _sum: { billAmount: true, unitsConsumed: true },
         orderBy: [{ year: "desc" }, { month: "desc" }],
         take: TREND_PERIODS,
       }),
       prisma.monthlyReading.findMany({
+        where: scope,
         orderBy: newestFirst,
         take: RECENT_READINGS,
         select: { ...readingSelect, meter: { select: meterRelationSelect } },
       }),
+      prisma.mainBill.findUnique({ where: { userId_month_year: { userId, ...period } } }),
     ]);
 
   const readMeterIds = new Set(readMeters.map((row) => row.meterId));
 
   const pending = await prisma.meter.findMany({
-    where: { id: { notIn: [...readMeterIds] } },
+    where: { property: { userId }, id: { notIn: [...readMeterIds] } },
     orderBy: [{ property: { name: "asc" } }, { name: "asc" }],
     select: {
       id: true,
@@ -140,6 +149,12 @@ export const GET = route(async () => {
     pendingMeters,
     trend,
     recentReadings: recentRows.map(serializeReadingWithMeter),
+    mainBill: mainBillRow
+      ? { month: mainBillRow.month, year: mainBillRow.year, amount: Number(mainBillRow.amount) }
+      : null,
+    ownerRemainder: mainBillRow
+      ? Number(mainBillRow.amount) - Number(currentTotals._sum.billAmount ?? 0)
+      : null,
   };
 
   return NextResponse.json(payload);

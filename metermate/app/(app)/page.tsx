@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { OverviewScreen } from "@/components/overview/overview-screen";
+import { HomeScreen } from "@/components/home/home-screen";
 
 export const metadata: Metadata = {
-  title: "Overview",
-  description: "Where you are in this month's billing cycle.",
+  title: "Home",
+  description: "Record this month's readings and see where the bill stands.",
 };
 
-export default function OverviewPage() {
-  return <OverviewScreen />;
+export default function HomePage() {
+  return <HomeScreen />;
 }

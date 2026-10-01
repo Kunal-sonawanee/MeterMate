@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
+          {
+            // 'unsafe-inline' on script-src covers the one small
+            // theme-flash-prevention script in app/layout.tsx (static,
+            // no user input); everything else is self-hosted, nothing is
+            // framed or loaded from a third-party origin.
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+          },
         ],
       },
       {

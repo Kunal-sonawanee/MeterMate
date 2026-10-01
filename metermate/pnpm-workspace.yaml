@@ -1,3 +1,9 @@
+overrides:
+  # Transitive-only deps of @hookform/resolvers' unused /ajv subpath (we only
+  # import /zod) — forced patched to keep the audit clean even though the
+  # vulnerable code is never actually loaded by this app.
+  fast-uri: '>=3.1.8'
+  deepmerge-ts: '>=8.0.0'
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

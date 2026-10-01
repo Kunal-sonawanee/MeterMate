@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { badRequest, conflict, intParam, parseBody, route } from "@/lib/http";
+import {
+  badRequest,
+  conflict,
+  intParam,
+  parseBody,
+  requireUserId,
+  route,
+} from "@/lib/http";
 import { readingSchema } from "@/lib/validation";
 import {
   deriveFromPreceding,
@@ -27,6 +34,7 @@ export const dynamic = "force-dynamic";
  * landlord with years of history doesn't ship the whole archive to the browser.
  */
 export const GET = route(async (request: Request) => {
+  const userId = await requireUserId();
   const params = new URL(request.url).searchParams;
 
   const limit = intParam(params, "limit", { fallback: 50, min: 1, max: 200 });
@@ -47,8 +55,10 @@ export const GET = route(async (request: Request) => {
     month <= 12;
 
   const where: Prisma.MonthlyReadingWhereInput = {
+    meter: {
+      property: { userId, ...(propertyId ? { id: propertyId } : {}) },
+    },
     ...(meterId ? { meterId } : {}),
-    ...(propertyId ? { meter: { propertyId } } : {}),
     ...(hasPeriod ? { month, year } : {}),
   };
 
@@ -81,10 +91,11 @@ export const GET = route(async (request: Request) => {
  * correct for every month regardless of the order they were typed in.
  */
 export const POST = route(async (request: Request) => {
+  const userId = await requireUserId();
   const data = await parseBody(request, readingSchema);
 
-  const meter = await prisma.meter.findUnique({
-    where: { id: data.meterId },
+  const meter = await prisma.meter.findFirst({
+    where: { id: data.meterId, property: { userId } },
     select: { id: true },
   });
 

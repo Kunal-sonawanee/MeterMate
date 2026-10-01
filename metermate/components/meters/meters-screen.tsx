@@ -50,7 +50,7 @@ export function MetersScreen() {
       return (
         meter.name.toLowerCase().includes(term) ||
         meter.property.name.toLowerCase().includes(term) ||
-        (meter.meterNumber?.toLowerCase().includes(term) ?? false)
+        (meter.whatsappNumber?.toLowerCase().includes(term) ?? false)
       );
     });
 
@@ -132,7 +132,7 @@ export function MetersScreen() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search meters, properties or serials"
+                placeholder="Search meters, properties or WhatsApp numbers"
                 aria-label="Search meters"
                 className="pl-9"
               />
@@ -244,11 +244,11 @@ function MeterCard({
               {meter.name}
             </Link>
             {/*
-              The serial line is always reserved, so cards sitting side by side
-              line up whether or not a meter has one recorded.
+              This line is always reserved, so cards sitting side by side line
+              up whether or not a meter has a WhatsApp number recorded.
             */}
             <p className="text-muted-foreground mt-0.5 min-h-4 truncate font-mono text-xs">
-              {meter.meterNumber}
+              {meter.whatsappNumber}
             </p>
           </div>
 

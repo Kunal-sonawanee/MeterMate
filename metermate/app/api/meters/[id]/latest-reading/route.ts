@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { notFound, route } from "@/lib/http";
+import { notFound, requireUserId, route } from "@/lib/http";
 import { findPrecedingReading } from "@/lib/readings-service";
 import type { PreviousReadingResponse } from "@/lib/types";
 
@@ -15,10 +15,11 @@ type Params = { params: Promise<{ id: string }> };
  * that actually precedes it, not just the newest reading on record.
  */
 export const GET = route(async (request: Request, { params }: Params) => {
+  const userId = await requireUserId();
   const { id } = await params;
 
-  const meter = await prisma.meter.findUnique({
-    where: { id },
+  const meter = await prisma.meter.findFirst({
+    where: { id, property: { userId } },
     select: { id: true },
   });
   if (!meter) {

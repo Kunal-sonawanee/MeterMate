@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { conflict, notFound, parseBody, route } from "@/lib/http";
+import { conflict, notFound, parseBody, requireUserId, route } from "@/lib/http";
 import { propertyUpdateSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,17 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 export const PATCH = route(async (request: Request, { params }: Params) => {
+  const userId = await requireUserId();
   const { id } = await params;
   const data = await parseBody(request, propertyUpdateSchema);
+
+  const owned = await prisma.property.findFirst({
+    where: { id, userId },
+    select: { id: true },
+  });
+  if (!owned) {
+    throw notFound("That property no longer exists.");
+  }
 
   const property = await prisma.property.update({
     where: { id },
@@ -38,12 +47,13 @@ export const PATCH = route(async (request: Request, { params }: Params) => {
 });
 
 export const DELETE = route(async (request: Request, { params }: Params) => {
+  const userId = await requireUserId();
   const { id } = await params;
   const url = new URL(request.url);
   const cascade = url.searchParams.get("cascade") === "true";
 
-  const property = await prisma.property.findUnique({
-    where: { id },
+  const property = await prisma.property.findFirst({
+    where: { id, userId },
     select: { id: true, name: true, _count: { select: { meters: true } } },
   });
 

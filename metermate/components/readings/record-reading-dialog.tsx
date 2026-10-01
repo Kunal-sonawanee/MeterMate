@@ -260,7 +260,7 @@ function RecordReadingForm({
                 {propertyMeters.map((meter) => (
                   <option key={meter.id} value={meter.id}>
                     {meter.name}
-                    {meter.meterNumber ? ` · ${meter.meterNumber}` : ""}
+                    {meter.whatsappNumber ? ` · ${meter.whatsappNumber}` : ""}
                   </option>
                 ))}
               </optgroup>

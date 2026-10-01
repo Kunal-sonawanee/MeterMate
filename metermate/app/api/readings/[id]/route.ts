@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { conflict, notFound, parseBody, route } from "@/lib/http";
+import { conflict, notFound, parseBody, requireUserId, route } from "@/lib/http";
 import { readingUpdateSchema } from "@/lib/validation";
 import { recalculateChain, roundReading } from "@/lib/readings-service";
 import { readingSelect, serializeReading } from "@/lib/serialize";
@@ -11,12 +11,13 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
 
 export const PATCH = route(async (request: Request, { params }: Params) => {
+  const userId = await requireUserId();
   const { id } = await params;
   const data = await parseBody(request, readingUpdateSchema);
 
   const updated = await prisma.$transaction(async (tx) => {
-    const existing = await tx.monthlyReading.findUnique({
-      where: { id },
+    const existing = await tx.monthlyReading.findFirst({
+      where: { id, meter: { property: { userId } } },
       select: { id: true, meterId: true, month: true, year: true },
     });
 
@@ -69,11 +70,12 @@ export const PATCH = route(async (request: Request, { params }: Params) => {
 });
 
 export const DELETE = route(async (_request: Request, { params }: Params) => {
+  const userId = await requireUserId();
   const { id } = await params;
 
   await prisma.$transaction(async (tx) => {
-    const existing = await tx.monthlyReading.findUnique({
-      where: { id },
+    const existing = await tx.monthlyReading.findFirst({
+      where: { id, meter: { property: { userId } } },
       select: { id: true, meterId: true },
     });
 

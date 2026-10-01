@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fieldErrors, firstErrorMessage } from "@/lib/validation";
+import { auth } from "@/lib/auth";
 
 /**
  * Route-handler plumbing.
@@ -25,6 +26,21 @@ export const badRequest = (message: string, fields?: Record<string, string>) =>
   new ApiError(400, message, fields);
 export const notFound = (message: string) => new ApiError(404, message);
 export const conflict = (message: string) => new ApiError(409, message);
+export const unauthorized = () =>
+  new ApiError(401, "Sign in to continue.");
+export const tooManyRequests = (message: string) => new ApiError(429, message);
+
+/**
+ * Every data-touching route calls this first. It's the actual security
+ * boundary — middleware only redirects page navigation, it doesn't stop a
+ * direct request to an API route.
+ */
+export async function requireUserId(): Promise<string> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw unauthorized();
+  return userId;
+}
 
 type PrismaLikeError = { code?: string };
 

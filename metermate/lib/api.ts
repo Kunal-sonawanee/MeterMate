@@ -7,12 +7,15 @@ import type {
   PropertySummary,
   Reading,
   ReadingsResponse,
+  MainBill,
 } from "@/lib/types";
 import type {
   MeterInput,
   PropertyInput,
   ReadingInput,
   ReadingUpdateInput,
+  MainBillInput,
+  SignupInput,
 } from "@/lib/validation";
 
 /**
@@ -89,9 +92,23 @@ const query = (params: Record<string, string | number | undefined>) => {
   return serialized ? `?${serialized}` : "";
 };
 
+/* -------------------------------------------------------------------- auth */
+
+export const signup = (data: SignupInput) =>
+  request<{ message: string }>("/auth/signup", { method: "POST", body: json(data) });
+
+export const completeOnboarding = () =>
+  request<{ message: string }>("/onboarding/complete", { method: "POST" });
+
 /* -------------------------------------------------------------- dashboard */
 
 export const getDashboard = () => request<DashboardResponse>("/dashboard");
+
+export const getMainBill = (period: { month: number; year: number }) =>
+  request<MainBill | null>(`/main-bill${query(period)}`);
+
+export const saveMainBill = (data: MainBillInput) =>
+  request<MainBill>("/main-bill", { method: "PUT", body: json(data) });
 
 /* ------------------------------------------------------------- properties */
 

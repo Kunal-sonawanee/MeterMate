@@ -19,18 +19,18 @@ const PROPERTIES = [
     name: "Sunrise Apartments",
     address: "14 MG Road, Kothrud, Pune 411038",
     meters: [
-      { name: "Flat 1A", meterNumber: "MSEB-4471902", start: 12_450, usage: [212, 198, 240, 265, 288, 241] },
-      { name: "Flat 1B", meterNumber: "MSEB-4471903", start: 8_910, usage: [154, 168, 187, 173, 165, 158] },
-      { name: "Flat 2A", meterNumber: "MSEB-4471904", start: 15_020, usage: [301, 288, 342, 366, 391, 318] },
-      { name: "Common area", meterNumber: null, start: 4_280, usage: [96, 91, 104, 110, 118, 99] },
+      { name: "Flat 1A", whatsappNumber: "9876543210", start: 12_450, usage: [212, 198, 240, 265, 288, 241] },
+      { name: "Flat 1B", whatsappNumber: "9876543211", start: 8_910, usage: [154, 168, 187, 173, 165, 158] },
+      { name: "Flat 2A", whatsappNumber: "9876543212", start: 15_020, usage: [301, 288, 342, 366, 391, 318] },
+      { name: "Common area", whatsappNumber: null, start: 4_280, usage: [96, 91, 104, 110, 118, 99] },
     ],
   },
   {
     name: "Nandini Shops",
     address: "Plot 7, Station Road, Nashik 422001",
     meters: [
-      { name: "Shop front", meterNumber: "MSEB-9920411", start: 22_100, usage: [430, 462, 511, 498, 545, 470] },
-      { name: "Back godown", meterNumber: null, start: 6_740, usage: [88, 79, 95, 102, 111, 94] },
+      { name: "Shop front", whatsappNumber: "9876543213", start: 22_100, usage: [430, 462, 511, 498, 545, 470] },
+      { name: "Back godown", whatsappNumber: null, start: 6_740, usage: [88, 79, 95, 102, 111, 94] },
     ],
   },
 ];
@@ -67,7 +67,7 @@ async function main() {
       const meter = await prisma.meter.create({
         data: {
           name: meterSeed.name,
-          meterNumber: meterSeed.meterNumber,
+          whatsappNumber: meterSeed.whatsappNumber,
           propertyId: property.id,
         },
       });

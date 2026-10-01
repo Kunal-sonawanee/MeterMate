@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ListOrdered, Plus, X } from "lucide-react";
+import { ListOrdered, X } from "lucide-react";
 
-import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldLabel, Select, Input } from "@/components/ui/field";
@@ -15,18 +14,25 @@ import {
 } from "@/components/readings/readings-table";
 import { useMeters, useProperties, useReadings } from "@/hooks/use-metermate";
 import { formatCurrency, formatUnits, fromMonthInputValue } from "@/lib/format";
+import { useTranslation } from "@/lib/i18n";
 
 const PAGE_SIZE = 25;
 
 /**
- * The full history, with the filters a landlord actually reaches for: which
- * property, which meter, which month. Filtering runs server-side, so the page
- * stays fast once there are years of readings.
+ * The filterable reading history — property, meter, billing month — with
+ * server-side filtering so it stays fast with years of data. Shared by the
+ * full `/readings` page and the "View history" sheet on Home, which only
+ * differ in their starting month filter and surrounding chrome.
  */
-export function ReadingsScreen() {
+export function ReadingsBrowser({
+  defaultMonthValue = "",
+}: {
+  defaultMonthValue?: string;
+}) {
+  const { t } = useTranslation();
   const [propertyId, setPropertyId] = useState("");
   const [meterId, setMeterId] = useState("");
-  const [monthValue, setMonthValue] = useState("");
+  const [monthValue, setMonthValue] = useState(defaultMonthValue);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const period = useMemo(() => fromMonthInputValue(monthValue), [monthValue]);
@@ -34,7 +40,6 @@ export function ReadingsScreen() {
   const { data: properties } = useProperties();
   const { data: meters } = useMeters();
 
-  // Selecting a property narrows the meter list to that property's meters.
   const availableMeters = useMemo(
     () =>
       (meters ?? []).filter(
@@ -73,21 +78,6 @@ export function ReadingsScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Readings"
-        description="Every reading you've recorded, newest first."
-        actions={
-          <RecordReadingDialog
-            trigger={
-              <Button className="hidden md:inline-flex">
-                <Plus aria-hidden />
-                Record reading
-              </Button>
-            }
-          />
-        }
-      />
-
       <Card className="mb-4 sm:mb-5">
         <CardContent className="grid gap-3 sm:grid-cols-3 sm:gap-4">
           <Field>
@@ -100,7 +90,7 @@ export function ReadingsScreen() {
                 setLimit(PAGE_SIZE);
               }}
             >
-              <option value="">All properties</option>
+              <option value="">{t("home.allProperties")}</option>
               {properties?.map((property) => (
                 <option key={property.id} value={property.id}>
                   {property.name}
@@ -118,7 +108,7 @@ export function ReadingsScreen() {
                 setLimit(PAGE_SIZE);
               }}
             >
-              <option value="">All meters</option>
+              <option value="">{t("home.allMeters")}</option>
               {availableMeters.map((meter) => (
                 <option key={meter.id} value={meter.id}>
                   {meter.name}

@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import {
   ApiRequestError,
+  completeOnboarding,
   createMeter,
   createProperty,
   createReading,
@@ -16,8 +17,10 @@ import {
   deleteProperty,
   deleteReading,
   getDashboard,
+  getMainBill,
   getMeter,
   getMeters,
+  saveMainBill,
   getPrecedingReading,
   getProperties,
   getReadings,
@@ -31,6 +34,7 @@ import type {
   PropertyInput,
   ReadingInput,
   ReadingUpdateInput,
+  MainBillInput,
 } from "@/lib/validation";
 
 /**
@@ -48,6 +52,7 @@ export const queryKeys = {
   meters: ["meters"] as const,
   meter: (id: string) => ["meters", id] as const,
   readings: (params: ReadingsQuery = {}) => ["readings", params] as const,
+  mainBill: (month: number, year: number) => ["mainBill", month, year] as const,
   precedingReading: (meterId: string, month?: number, year?: number) =>
     [
       "meters",
@@ -80,6 +85,32 @@ export function errorMessage(
 
 export function useDashboard() {
   return useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard });
+}
+
+export function useMainBill(period: { month: number; year: number }) {
+  return useQuery({
+    queryKey: queryKeys.mainBill(period.month, period.year),
+    queryFn: () => getMainBill(period),
+  });
+}
+
+export function useSaveMainBill() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (data: MainBillInput) => saveMainBill(data),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        client.invalidateQueries({ queryKey: ["mainBill"] }),
+      ]);
+      toast.success("Main bill saved.");
+    },
+    onError: (error) => toast.error(errorMessage(error, "Couldn't save the main bill.")),
+  });
+}
+
+export function useCompleteOnboarding() {
+  return useMutation({ mutationFn: completeOnboarding });
 }
 
 export function useProperties() {

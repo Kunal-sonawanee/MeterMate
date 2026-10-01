@@ -50,9 +50,26 @@ export const propertySchema = z.object({
   address: trimmedString(200).optional().or(z.literal("")),
 });
 
+/** Digits only after stripping spaces/dashes/+, 7–15 long (E.164 range). */
+const whatsappNumberField = z
+  .string()
+  .transform((value) => value.trim())
+  .pipe(
+    z
+      .string()
+      .refine(
+        (value) => value === "" || /^\+?[\d\s-]{7,20}$/.test(value),
+        "Enter a valid phone number.",
+      )
+      .refine((value) => {
+        const digits = value.replace(/\D/g, "");
+        return digits.length === 0 || (digits.length >= 7 && digits.length <= 15);
+      }, "Phone number should have 7–15 digits."),
+  );
+
 export const meterSchema = z.object({
   name: requiredName("Meter name", 60),
-  meterNumber: trimmedString(40).optional().or(z.literal("")),
+  whatsappNumber: whatsappNumberField.optional().or(z.literal("")),
   propertyId: z
     .string({ error: "Select a property." })
     .min(1, "Select a property."),
@@ -111,6 +128,19 @@ export const readingUpdateSchema = z.object({
   ratePerUnit: rateField.optional(),
 });
 
+const mainBillAmountField = numeric("Main bill amount").pipe(
+  z
+    .number()
+    .min(0, "Bill amount cannot be negative.")
+    .max(1_000_000_000, "That bill amount looks too large — please check it."),
+);
+
+export const mainBillSchema = z.object({
+  month: monthField,
+  year: yearField,
+  amount: mainBillAmountField,
+});
+
 /**
  * Form-shaped variants.
  *
@@ -132,10 +162,35 @@ export const readingEditFormSchema = readingFormSchema.omit({ meterId: true });
 export type ReadingFormValues = z.input<typeof readingFormSchema>;
 export type ReadingEditFormValues = z.input<typeof readingEditFormSchema>;
 
+const emailField = z
+  .string({ error: "Email is required." })
+  .trim()
+  .toLowerCase()
+  .pipe(z.email("Enter a valid email address."));
+
+const passwordField = z
+  .string({ error: "Password is required." })
+  .min(8, "Password must be at least 8 characters.")
+  .max(72, "Password must be 72 characters or fewer.");
+
+export const signupSchema = z.object({
+  email: emailField,
+  password: passwordField,
+});
+
+export const loginSchema = z.object({
+  email: emailField,
+  password: z.string({ error: "Password is required." }).min(1, "Password is required."),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+
 export type PropertyInput = z.infer<typeof propertySchema>;
 export type MeterInput = z.infer<typeof meterSchema>;
 export type ReadingInput = z.infer<typeof readingSchema>;
 export type ReadingUpdateInput = z.infer<typeof readingUpdateSchema>;
+export type MainBillInput = z.infer<typeof mainBillSchema>;
 
 /** Flattens a Zod error into `{ field: message }` for form and API responses. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {

@@ -65,7 +65,7 @@ function Sidebar({ pathname }: { pathname: string }) {
         <Link
           href="/"
           className="focus-visible:outline-ring rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
-          aria-label="MeterMate — overview"
+          aria-label="MeterMate — home"
         >
           <span className="lg:hidden">
             <Wordmark className="[&>span:last-child]:hidden" />
@@ -161,8 +161,8 @@ function MobileTabBar({ pathname }: { pathname: string }) {
         "pb-[env(safe-area-inset-bottom)]",
       )}
     >
-      <ul className="grid grid-cols-5 items-center">
-        {NAV_ITEMS.slice(0, 2).map((item) => (
+      <ul className="grid grid-cols-3 items-center">
+        {NAV_ITEMS.map((item) => (
           <li key={item.href}>
             <TabLink item={item} active={isActivePath(pathname, item.href)} />
           </li>
@@ -182,11 +182,9 @@ function MobileTabBar({ pathname }: { pathname: string }) {
           />
         </li>
 
-        {NAV_ITEMS.slice(2, 4).map((item) => (
-          <li key={item.href}>
-            <TabLink item={item} active={isActivePath(pathname, item.href)} />
-          </li>
-        ))}
+        <li>
+          <TabLink item={SETTINGS_ITEM} active={isActivePath(pathname, SETTINGS_ITEM.href)} />
+        </li>
       </ul>
     </nav>
   );

@@ -7,15 +7,7 @@ import { ChevronLeft, IndianRupee, Pencil, Trash2, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Stat, StatSkeleton } from "@/components/ui/stat";
-import { Segmented } from "@/components/ui/segmented";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   EmptyState,
@@ -23,7 +15,6 @@ import {
   LoadingRegion,
   Skeleton,
 } from "@/components/ui/states";
-import { ConsumptionChart } from "@/components/charts/consumption-chart";
 import { MeterDialog } from "@/components/meters/meter-dialog";
 import { RecordReadingDialog } from "@/components/readings/record-reading-dialog";
 import {
@@ -39,13 +30,11 @@ import {
   formatUnits,
   percentageChange,
 } from "@/lib/format";
-import type { MeterDetail, ReadingWithMeter, TrendPoint } from "@/lib/types";
-
-const TREND_PERIODS = 12;
+import type { MeterDetail, ReadingWithMeter } from "@/lib/types";
 
 /**
- * One meter, end to end: where it stands now, how it has trended, and every
- * reading recorded against it.
+ * One meter, end to end: where it stands now and every reading recorded
+ * against it.
  */
 export function MeterDetailScreen({ meterId }: { meterId: string }) {
   const router = useRouter();
@@ -100,8 +89,8 @@ export function MeterDetailScreen({ meterId }: { meterId: string }) {
       <PageHeader
         title={meter.name}
         description={
-          meter.meterNumber
-            ? `${meter.property.name} · serial ${meter.meterNumber}`
+          meter.whatsappNumber
+            ? `${meter.property.name} · WhatsApp ${meter.whatsappNumber}`
             : meter.property.name
         }
         actions={
@@ -172,23 +161,6 @@ export function MeterDetailScreen({ meterId }: { meterId: string }) {
 }
 
 function MeterBody({ meter }: { meter: MeterDetail }) {
-  const [measure, setMeasure] = useState<"units" | "bill">("units");
-
-  // Readings arrive newest first; the chart reads left to right through time.
-  const trend: TrendPoint[] = useMemo(
-    () =>
-      [...meter.readings]
-        .slice(0, TREND_PERIODS)
-        .reverse()
-        .map((reading) => ({
-          month: reading.month,
-          year: reading.year,
-          unitsConsumed: reading.unitsConsumed,
-          billAmount: reading.billAmount,
-        })),
-    [meter.readings],
-  );
-
   const latest = meter.readings[0] ?? null;
   const previous = meter.readings[1] ?? null;
 
@@ -220,7 +192,7 @@ function MeterBody({ meter }: { meter: MeterDetail }) {
       <EmptyState
         icon={Zap}
         title="No readings for this meter yet"
-        description="Record the first one and this page will show usage, bills and a trend over time."
+        description="Record the first one and this page will show usage and bills."
         action={<RecordReadingDialog defaultMeterId={meter.id} />}
         className="bg-card"
       />
@@ -270,39 +242,6 @@ function MeterBody({ meter }: { meter: MeterDetail }) {
         />
       </section>
 
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>Usage trend</CardTitle>
-            <CardDescription>
-              {trend.length > 1
-                ? `Last ${trend.length} billing periods for this meter.`
-                : "One period recorded so far."}
-            </CardDescription>
-          </div>
-          <Segmented
-            label="Chart measure"
-            value={measure}
-            onChange={setMeasure}
-            options={[
-              { value: "units", label: "Units" },
-              { value: "bill", label: "Amount" },
-            ]}
-          />
-        </CardHeader>
-        <CardContent className="pt-0">
-          <ConsumptionChart
-            data={trend}
-            measure={measure}
-            caption={
-              measure === "units"
-                ? `Units consumed per billing period for ${meter.name}`
-                : `Amount billed per billing period for ${meter.name}`
-            }
-          />
-        </CardContent>
-      </Card>
-
       <section aria-labelledby="meter-history">
         <h2 id="meter-history" className="mb-3 text-sm font-semibold">
           Reading history
@@ -340,12 +279,6 @@ function MeterDetailSkeleton() {
           <StatSkeleton />
           <StatSkeleton />
         </div>
-        <Card>
-          <CardContent>
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="mt-4 h-[220px] w-full" />
-          </CardContent>
-        </Card>
         <ReadingsTableSkeleton />
       </div>
     </LoadingRegion>

@@ -26,6 +26,12 @@ const unitsFormatter = new Intl.NumberFormat(LOCALE, {
   maximumFractionDigits: 2,
 });
 
+/** The number alone, no currency symbol — for templates that supply their own. */
+const plainAmountFormatter = new Intl.NumberFormat(LOCALE, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const MONTH_NAMES = [
   "January",
   "February",
@@ -62,6 +68,11 @@ export function formatCurrencyCompact(
   return Math.abs(amount) < 100_000
     ? currencyFormatter.format(amount)
     : compactCurrencyFormatter.format(amount);
+}
+
+/** `1,240.00` — no `₹`, for templates (e.g. the WhatsApp message) that add their own symbol. */
+export function formatAmountPlain(value: number | string | null | undefined): string {
+  return plainAmountFormatter.format(toNumber(value));
 }
 
 /** Meter units, trimmed of trailing zeroes: `1,204` / `1,204.5`. */
@@ -110,6 +121,13 @@ export function fromMonthInputValue(
 export function currentMonthInputValue(): string {
   const now = new Date();
   return toMonthInputValue(now.getMonth() + 1, now.getFullYear());
+}
+
+/** The calendar month before this one, as an `<input type="month">` value. */
+export function lastMonthInputValue(): string {
+  const now = new Date();
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return toMonthInputValue(previous.getMonth() + 1, previous.getFullYear());
 }
 
 /** `12 Aug 2026` */
