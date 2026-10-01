@@ -1,207 +1,91 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { conflict, notFound, parseBody, requireUserId, route } from "@/lib/http";
+import { readingUpdateSchema } from "@/lib/validation";
+import { recalculateChain, roundReading } from "@/lib/readings-service";
+import { readingSelect, serializeReading } from "@/lib/serialize";
+import { formatPeriod } from "@/lib/format";
 
-type Params = {
-  params: Promise<{
-    id: string;
-  }>;
-};
+export const dynamic = "force-dynamic";
 
-type AppError = {
-  message: string;
-  status?: number;
-};
+type Params = { params: Promise<{ id: string }> };
 
-async function recalculateMeterReadings(
-  tx: Prisma.TransactionClient,
-  meterId: string
-) {
-  const readings = await tx.monthlyReading.findMany({
-    where: {
-      meterId,
-    },
-    orderBy: [
-      {
-        year: "asc",
-      },
-      {
-        month: "asc",
-      },
-      {
-        createdAt: "asc",
-      },
-    ],
-  });
+export const PATCH = route(async (request: Request, { params }: Params) => {
+  const userId = await requireUserId();
+  const { id } = await params;
+  const data = await parseBody(request, readingUpdateSchema);
 
-  let previousReading = 0;
+  const updated = await prisma.$transaction(async (tx) => {
+    const existing = await tx.monthlyReading.findFirst({
+      where: { id, meter: { property: { userId } } },
+      select: { id: true, meterId: true, month: true, year: true },
+    });
 
-  for (const reading of readings) {
-    const currentReading = Number(reading.currentReading);
-
-    if (currentReading < previousReading) {
-      const error: AppError = {
-        message: "Reading values must be chronological and non-decreasing.",
-      };
-      error.status = 400;
-      throw error;
+    if (!existing) {
+      throw notFound("That reading no longer exists.");
     }
 
-    const unitsConsumed = currentReading - previousReading;
-    const billAmount = unitsConsumed * Number(reading.ratePerUnit);
+    const month = data.month ?? existing.month;
+    const year = data.year ?? existing.year;
+
+    if (month !== existing.month || year !== existing.year) {
+      const clash = await tx.monthlyReading.findFirst({
+        where: { meterId: existing.meterId, month, year, NOT: { id } },
+        select: { id: true },
+      });
+
+      if (clash) {
+        throw conflict(
+          `This meter already has a reading for ${formatPeriod(month, year)}. Edit that entry instead.`,
+        );
+      }
+    }
 
     await tx.monthlyReading.update({
-      where: {
-        id: reading.id,
-      },
+      where: { id },
       data: {
-        previousReading,
-        unitsConsumed,
-        billAmount,
+        month,
+        year,
+        ...(data.currentReading !== undefined
+          ? { currentReading: roundReading(data.currentReading) }
+          : {}),
+        ...(data.ratePerUnit !== undefined
+          ? { ratePerUnit: data.ratePerUnit }
+          : {}),
       },
     });
 
-    previousReading = currentReading;
-  }
-}
+    // Moving or re-valuing a reading shifts every month after it.
+    await recalculateChain(tx, existing.meterId);
 
-export async function PATCH(req: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
-    const body = await req.json();
-
-    const updatedReading = await prisma.$transaction(async (tx) => {
-      const existingReading = await tx.monthlyReading.findUnique({
-        where: { id },
-      });
-
-      if (!existingReading) {
-        const error: AppError = { message: "Reading not found." };
-        error.status = 404;
-        throw error;
-      }
-
-      const month = Number(body.month ?? existingReading.month);
-      const year = Number(body.year ?? existingReading.year);
-      const currentReading = Number(
-        body.currentReading ?? existingReading.currentReading
-      );
-      const ratePerUnit = Number(
-        body.ratePerUnit ?? existingReading.ratePerUnit
-      );
-
-      if (
-        Number.isNaN(month) ||
-        Number.isNaN(year) ||
-        Number.isNaN(currentReading) ||
-        Number.isNaN(ratePerUnit)
-      ) {
-        const error: AppError = { message: "Invalid numeric values." };
-        error.status = 400;
-        throw error;
-      }
-
-      if (month < 1 || month > 12) {
-        const error: AppError = { message: "Month must be between 1 and 12." };
-        error.status = 400;
-        throw error;
-      }
-
-      if (year < 2020 || year > 2100) {
-        const error: AppError = { message: "Invalid year." };
-        error.status = 400;
-        throw error;
-      }
-
-      if (currentReading < 0 || ratePerUnit < 0) {
-        const error: AppError = { message: "Values cannot be negative." };
-        error.status = 400;
-        throw error;
-      }
-
-      const duplicateReading = await tx.monthlyReading.findFirst({
-        where: {
-          meterId: existingReading.meterId,
-          month,
-          year,
-          NOT: { id },
-        },
-      });
-
-      if (duplicateReading) {
-        const error: AppError = {
-          message:
-            "Reading for this meter already exists for the selected month and year.",
-        };
-        error.status = 409;
-        throw error;
-      }
-
-      await tx.monthlyReading.update({
-        where: { id },
-        data: {
-          month,
-          year,
-          currentReading,
-          ratePerUnit,
-        },
-      });
-
-      await recalculateMeterReadings(tx, existingReading.meterId);
-
-      return tx.monthlyReading.findUnique({
-        where: { id },
-      });
+    const saved = await tx.monthlyReading.findUniqueOrThrow({
+      where: { id },
+      select: readingSelect,
     });
 
-    return NextResponse.json(updatedReading);
-  } catch (error: unknown) {
-    console.error(error);
+    return serializeReading(saved);
+  });
 
-    if (isAppError(error)) {
-      return NextResponse.json({ message: error.message }, { status: error.status ?? 500 });
-    }
+  return NextResponse.json(updated);
+});
 
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
-  }
-}
+export const DELETE = route(async (_request: Request, { params }: Params) => {
+  const userId = await requireUserId();
+  const { id } = await params;
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
-
-    await prisma.$transaction(async (tx) => {
-      const existingReading = await tx.monthlyReading.findUnique({
-        where: { id },
-      });
-
-      if (!existingReading) {
-        const error = new Error("Reading not found.");
-        (error as Error & { status?: number }).status = 404;
-        throw error;
-      }
-
-      await tx.monthlyReading.delete({ where: { id } });
-      await recalculateMeterReadings(tx, existingReading.meterId);
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.monthlyReading.findFirst({
+      where: { id, meter: { property: { userId } } },
+      select: { id: true, meterId: true },
     });
 
-    return NextResponse.json({ message: "Reading deleted successfully." });
-  } catch (error: unknown) {
-    console.error(error);
-
-    if (isAppError(error)) {
-      return NextResponse.json({ message: error.message }, { status: error.status ?? 500 });
+    if (!existing) {
+      throw notFound("That reading no longer exists.");
     }
 
-    return NextResponse.json({ message: "Failed to delete reading." }, { status: 500 });
-  }
-}
+    await tx.monthlyReading.delete({ where: { id } });
+    await recalculateChain(tx, existing.meterId);
+  });
 
-function isAppError(error: unknown): error is AppError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof (error as { message?: unknown }).message === "string"
-  );
-}
+  return NextResponse.json({ message: "Reading deleted." });
+});

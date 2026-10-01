@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  onboardedAt  DateTime?
+
+  properties Property[]
+  mainBills  MainBill[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Property {
   id      String  @id @default(cuid())
   name    String
@@ -14,14 +27,17 @@ model Property {
 
   meters Meter[] @relation("PropertyMeters")
 
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Meter {
-  id          String  @id @default(cuid())
-  name        String
-  meterNumber String?
+  id             String  @id @default(cuid())
+  name           String
+  whatsappNumber String?
 
   propertyId String
   property   Property @relation("PropertyMeters", fields: [propertyId], references: [id], onDelete: Cascade)
@@ -52,4 +68,19 @@ model MonthlyReading {
   updatedAt DateTime @updatedAt
 
   @@unique([meterId, month, year])
+}
+
+model MainBill {
+  id     String  @id @default(cuid())
+  month  Int
+  year   Int
+  amount Decimal
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month, year])
 }

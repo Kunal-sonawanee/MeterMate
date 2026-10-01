@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Other AI/editor tool workspaces, not part of the app.
+    ".kilo/**",
+    ".windsurf/**",
   ]),
 ]);
 

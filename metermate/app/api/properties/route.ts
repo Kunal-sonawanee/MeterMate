@@ -1,53 +1,52 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parseBody, requireUserId, route } from "@/lib/http";
+import { propertySchema } from "@/lib/validation";
+import type { PropertySummary } from "@/lib/types";
 
-export async function GET() {
-  try {
-    const properties = await prisma.property.findMany({
-      include: {
-        meters: true,
-      },
-    });
+export const dynamic = "force-dynamic";
 
-    return NextResponse.json(properties);
-  } catch (error) {
-    console.error(error);
+export const GET = route(async () => {
+  const userId = await requireUserId();
 
-    return NextResponse.json(
-      {
-        message: "Failed to fetch properties",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}
+  const properties = await prisma.property.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      createdAt: true,
+      _count: { select: { meters: true } },
+    },
+  });
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
+  const payload: PropertySummary[] = properties.map((property) => ({
+    id: property.id,
+    name: property.name,
+    address: property.address,
+    meterCount: property._count.meters,
+    createdAt: property.createdAt.toISOString(),
+  }));
 
-    const property = await prisma.property.create({
-      data: {
-        name: body.name,
-        address: body.address,
-      },
-    });
+  return NextResponse.json(payload);
+});
 
-    return NextResponse.json(property, {
-      status: 201,
-    });
-  } catch (error) {
-    console.error(error);
+export const POST = route(async (request: Request) => {
+  const userId = await requireUserId();
+  const data = await parseBody(request, propertySchema);
 
-    return NextResponse.json(
-      {
-        message: "Failed to create property",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}
+  const property = await prisma.property.create({
+    data: {
+      name: data.name,
+      address: data.address ? data.address : null,
+      userId,
+    },
+    select: { id: true, name: true, address: true, createdAt: true },
+  });
+
+  return NextResponse.json(
+    { ...property, meterCount: 0, createdAt: property.createdAt.toISOString() },
+    { status: 201 },
+  );
+});
